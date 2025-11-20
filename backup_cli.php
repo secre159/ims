@@ -46,7 +46,7 @@ class BackupCLI {
         
         // Build mysqldump command
         $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --routines --triggers %s > %s 2>&1',
+            'mysqldump --add-drop-table --host=%s --port=%s --user=%s --password=%s --single-transaction --routines --triggers %s > %s 2>&1',
             escapeshellarg($this->host),
             escapeshellarg($this->port),
             escapeshellarg($this->user),

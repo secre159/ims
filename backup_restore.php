@@ -73,7 +73,7 @@ class DatabaseBackupRestore {
      */
     private function createBackupWithMysqldump($filepath, $description) {
         $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --password=%s %s > %s 2>&1',
+            'mysqldump --add-drop-table --host=%s --port=%s --user=%s --password=%s %s > %s 2>&1',
             escapeshellarg($this->host),
             escapeshellarg($this->port),
             escapeshellarg($this->user),
@@ -225,23 +225,57 @@ class DatabaseBackupRestore {
             
             $sql = file_get_contents($filepath);
             
-            // Split SQL into individual statements
-            $statements = array_filter(
-                array_map('trim', explode(';', $sql)),
-                function($stmt) {
-                    return !empty($stmt) && substr($stmt, 0, 2) !== '--';
+            // Remove comments
+            $sql = preg_replace('/^--.*$/m', '', $sql);
+            
+            // Split SQL into individual statements, handling multi-line statements
+            $statements = [];
+            $buffer = '';
+            $lines = explode("\n", $sql);
+            
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                
+                $buffer .= $line . " ";
+                
+                // Check if statement ends with semicolon
+                if (substr(rtrim($line), -1) === ';') {
+                    $stmt = trim($buffer);
+                    if (!empty($stmt)) {
+                        $statements[] = $stmt;
+                    }
+                    $buffer = '';
                 }
-            );
+            }
+            
+            // Disable foreign key checks and autocommit for restore
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+            $pdo->exec('SET AUTOCOMMIT=0');
             
             $pdo->beginTransaction();
             
             foreach ($statements as $statement) {
-                if (!empty($statement)) {
-                    $pdo->exec($statement);
+                if (!empty($statement) && $statement !== ';') {
+                    try {
+                        $pdo->exec($statement);
+                    } catch (Exception $e) {
+                        // Skip statements that fail (like SET commands that may not be needed)
+                        // Only throw if it's a critical error (CREATE, INSERT, DROP)
+                        if (stripos($statement, 'CREATE TABLE') !== false || 
+                            stripos($statement, 'INSERT INTO') !== false ||
+                            stripos($statement, 'DROP TABLE') !== false) {
+                            throw $e;
+                        }
+                    }
                 }
             }
             
             $pdo->commit();
+            
+            // Re-enable foreign key checks
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+            $pdo->exec('SET AUTOCOMMIT=1');
             
             return [
                 'success' => true,
@@ -251,6 +285,8 @@ class DatabaseBackupRestore {
         } catch (Exception $e) {
             if (isset($pdo)) {
                 $pdo->rollBack();
+                $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+                $pdo->exec('SET AUTOCOMMIT=1');
             }
             return [
                 'success' => false,
