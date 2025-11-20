@@ -24,7 +24,14 @@ class BackupCLI {
         $this->dbname = getenv('MYSQL_ADDON_DB') ?: 'inv_system';
         $this->port = getenv('MYSQL_ADDON_PORT') ?: 3306;
         
-        $this->backupDir = __DIR__ . '/backups/';
+        // Use persistent disk on Render if available, otherwise local directory
+        $persistentDir = '/var/data/backups/';
+        if (is_dir('/var/data') && is_writable('/var/data')) {
+            $this->backupDir = $persistentDir;
+        } else {
+            $this->backupDir = __DIR__ . '/backups/';
+        }
+        
         if (!is_dir($this->backupDir)) {
             mkdir($this->backupDir, 0755, true);
         }

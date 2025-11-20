@@ -68,6 +68,20 @@ git commit -m "Deploy updates"
 git push origin main
 ```
 
+### Render Persistent Disk Setup (for Backups)
+```powershell
+# In Render Dashboard:
+# 1. Go to your service → Settings
+# 2. Add Disk → Create new disk
+# 3. Name: ims-backups
+# 4. Mount Path: /var/data
+# 5. Size: 10GB (or as needed)
+# 6. Save changes
+
+# The backup system will automatically use /var/data/backups/
+# if the persistent disk is mounted
+```
+
 ## Architecture & Structure
 
 ### Core Components
@@ -311,7 +325,8 @@ http://localhost:8080/backup_restore.php
 - Fallback: PHP-based backup (works without mysql client)
 
 **Storage:**
-- Backups stored in `backups/` directory
+- Backups stored in `/var/data/backups/` (Render persistent disk) or `backups/` (local)
+- Automatically detects and uses persistent disk if available
 - Protected with `.htaccess` (Deny from all)
 - Metadata stored in `.meta` files (description, timestamp, creator)
 - Filename format: `backup_dbname_YYYY-MM-DD_HHmmss.sql`
