@@ -7,10 +7,13 @@
 
 require_once 'includes/load.php';
 
-// Security check - only allow admin access
-if (!isset($_SESSION['user_id']) || $_SESSION['user_level'] != 1) {
-    die('Access denied. Admin privileges required.');
+// Security check - only allow logged in users (session check)
+if (!$session->isUserLoggedIn()) {
+    die('Access denied. Please login first.');
 }
+
+// Additional check: only allow admin level (level 1)
+page_require_level(1);
 
 class DatabaseBackupRestore {
     private $host;
