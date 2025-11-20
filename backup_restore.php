@@ -215,6 +215,9 @@ class DatabaseBackupRestore {
      * Restore using PHP (fallback method)
      */
     private function restoreWithPHP($filepath) {
+        $pdo = null;
+        $inTransaction = false;
+        
         try {
             $pdo = new PDO(
                 "mysql:host={$this->host};port={$this->port};dbname={$this->dbname}",
@@ -254,6 +257,7 @@ class DatabaseBackupRestore {
             $pdo->exec('SET AUTOCOMMIT=0');
             
             $pdo->beginTransaction();
+            $inTransaction = true;
             
             foreach ($statements as $statement) {
                 if (!empty($statement) && $statement !== ';') {
@@ -272,6 +276,7 @@ class DatabaseBackupRestore {
             }
             
             $pdo->commit();
+            $inTransaction = false;
             
             // Re-enable foreign key checks
             $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
@@ -283,10 +288,16 @@ class DatabaseBackupRestore {
             ];
             
         } catch (Exception $e) {
-            if (isset($pdo)) {
-                $pdo->rollBack();
-                $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
-                $pdo->exec('SET AUTOCOMMIT=1');
+            if ($pdo !== null) {
+                try {
+                    if ($inTransaction) {
+                        $pdo->rollBack();
+                    }
+                    $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+                    $pdo->exec('SET AUTOCOMMIT=1');
+                } catch (Exception $cleanupException) {
+                    // Ignore cleanup errors
+                }
             }
             return [
                 'success' => false,
