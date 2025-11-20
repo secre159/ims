@@ -538,7 +538,7 @@ date_default_timezone_set('Asia/Manila'); // Set your timezone
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="backup_restore.php" class="nav-link">
                                 <i class="fa-solid fa-gear"></i>
                                 <p>Settings</p>
                             </a>
