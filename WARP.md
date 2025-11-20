@@ -10,17 +10,13 @@ This is an AdminLTE-based Inventory Management System (IMS) built for Benguet St
 
 ### Local Development Setup
 ```powershell
-# Start the application with Docker
-docker-compose up -d
+# Note: Docker Compose file not currently in repository
+# For manual PHP development:
+php -S localhost:8080
 
-# Stop the application
-docker-compose down
-
-# View logs
-docker-compose logs -f web
-
-# Access local application
-# http://localhost:8080
+# Or use Docker directly:
+docker build -t adminlte-inventory .
+docker run -p 8080:80 adminlte-inventory
 ```
 
 ### Build Commands
@@ -31,17 +27,37 @@ docker build -t adminlte-inventory .
 # Install PHP dependencies
 composer install
 
-# Install Node.js dependencies
+# Install Node.js dependencies (for AdminLTE theme)
 npm install
 ```
 
 ### Database Management
 ```powershell
-# Import database schema (local MySQL)
-mysql -h localhost -P 3306 -u inventory_user -p inventory_password inv_system < "inv_system (2).sql"
+# Web-based initialization (RECOMMENDED)
+# Visit: http://localhost:8080/init_db.php
 
-# Connect to local database
-mysql -h localhost -P 3306 -u inventory_user -p inventory_password inv_system
+# Manual MySQL import (if needed)
+mysql -h localhost -P 3306 -u root -p inv_system < "inv_system (4).sql"
+
+# Connect to database
+mysql -h localhost -P 3306 -u root -p inv_system
+```
+
+### Database Backup & Restore
+```powershell
+# Web-based backup management (RECOMMENDED)
+# Visit: http://localhost:8080/backup_restore.php
+
+# CLI backup operations
+php backup_cli.php backup "Description here"
+php backup_cli.php list
+php backup_cli.php restore backup_dbname_2025-11-20_070000.sql
+
+# Manual backup using mysqldump (requires mysql client installed)
+mysqldump --host=bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com --port=3306 --user=urksc91tu6d1ykrt --password=KsC6GdxKNJQelbeXUlH4 bawsq3bp1lnrza6owc7h > backup.sql
+
+# Manual restore
+mysql --host=bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com --port=3306 --user=urksc91tu6d1ykrt --password=KsC6GdxKNJQelbeXUlH4 bawsq3bp1lnrza6owc7h < backup.sql
 ```
 
 ### Production Deployment
@@ -72,13 +88,18 @@ git push origin main
 
 ### Database Configuration
 The application uses environment variables for database configuration:
-- Local development: MySQL on port 3306
-- Production (Render): PostgreSQL with connection details from environment
+- Local development: MySQL on port 3306 (default) or 3308
+- Production: Currently configured for Clever Cloud MySQL (via MYSQL_ADDON_* env vars)
+- Previous deployment: Render PostgreSQL support
 
 Key files:
-- `includes/config.php` - Database connection setup with env var support
-- `includes/database.php` - Database abstraction layer
-- `includes/functions.php` - Common utility functions
+- `includes/config.php` - Database connection setup (currently uses Clever Cloud env vars)
+- `includes/database.php` - MySqli database wrapper class with query helpers
+- `includes/functions.php` - Sanitization (remove_junk, real_escape) and utility functions
+- `includes/sql.php` - Database operations (find_all, find_by_id, archive/restore functions)
+- `includes/load.php` - Central loader that initializes all includes in correct order
+- `includes/session.php` - Session management
+- `includes/upload.php` - File upload handling
 
 ### Main Application Files
 - `index.php` - Landing page with modern UI
@@ -131,20 +152,28 @@ DB_PORT=<database_port>
 
 ### Local Testing
 ```powershell
-# Check database connection
-php -r "require 'includes/config.php'; echo 'Config loaded successfully';"
+# Test database connection
+php -r "require 'includes/load.php'; echo 'Loaded successfully';"
 
-# Test Apache configuration
-docker-compose exec web apache2ctl configtest
+# Check PHP syntax in a file
+php -l path/to/file.php
 
-# View PHP error logs
-docker-compose logs web | grep -i error
+# Test Apache configuration (if using Docker)
+docker exec <container_id> apache2ctl configtest
 ```
 
-### Production Monitoring
-- Use Render dashboard logs for debugging
-- Database connection issues often related to environment variables
-- File permission problems common on deployment
+### Debugging Tips
+- Check `includes/config.php` for current database configuration
+- The application uses MySqli, not PDO (except in migrations)
+- Session data stored in `$_SESSION` with keys: 'user_id', 'user_level', 'name'
+- User levels: 1 = Admin, 2 = User, 3 = IT
+- Error reporting configured in PHP (check php.ini or Dockerfile)
+
+### Common Issues
+- Database connection: Verify environment variables (MYSQL_ADDON_HOST, MYSQL_ADDON_USER, etc.)
+- Session issues: Check if `session_start()` is called (done in includes/load.php)
+- Permission errors: Ensure uploads/ directory is writable (755)
+- Migration errors: Run via web interface at init_db.php or migrate.php
 
 ## Database Migrations
 
@@ -229,12 +258,132 @@ class Migration_add_user_settings extends Migration {
 }
 ```
 
+## Code Patterns & Best Practices
+
+### Database Operations
+- Use `$db->escape()` or `$db->con->real_escape_string()` for SQL inputs
+- Prefer `find_by_sql()` for SELECT queries (returns array of results)
+- Use `find_by_id($table, $id)` for single record lookups
+- Archive/restore functions: `archive($table, $id, $classification)` and `restore_from_archive($archive_id)`
+
+### Input Sanitization
+- `remove_junk($str)` - Strips HTML tags and encodes special characters
+- `real_escape($str)` - Escapes strings for SQL queries
+- Always sanitize user inputs from $_POST and $_GET
+
+### Session & Authentication
+- Check user level: `$_SESSION['user_level']` (1=Admin, 2=User, 3=IT)
+- Redirect helper: `redirect($url, $permanent = false)`
+- Session initialized automatically in includes/load.php
+
+### File Structure
+- Page files (e.g., items.php, requests.php) are in root directory
+- Each page typically requires 'includes/load.php' first
+- Use layouts/header.php and layouts/footer.php for page structure
+- Templates in templates/ directory for reusable components
+
+### Adding New Features
+1. Create migration if database changes needed (via create_migration.php)
+2. Add page file in root (e.g., new_feature.php)
+3. Include 'includes/load.php' at top
+4. Use existing functions from includes/sql.php and includes/functions.php
+5. Follow existing patterns for forms, tables, and modals
+
+## Database Backup & Restore System
+
+The application includes a comprehensive backup and restore system for the external MySQL database (Clever Cloud).
+
+### Web Interface (backup_restore.php)
+```powershell
+# Access the web interface
+http://localhost:8080/backup_restore.php
+```
+
+**Features:**
+- **Create Backup**: One-click backup with optional description
+- **Upload & Restore**: Upload .sql files and restore database
+- **Download**: Download backups to local machine
+- **Delete**: Remove old backups
+- **Activity Log**: Real-time logging of all operations
+
+**Methods:**
+- Primary: `mysqldump` command (if available)
+- Fallback: PHP-based backup (works without mysql client)
+
+**Storage:**
+- Backups stored in `backups/` directory
+- Protected with `.htaccess` (Deny from all)
+- Metadata stored in `.meta` files (description, timestamp, creator)
+- Filename format: `backup_dbname_YYYY-MM-DD_HHmmss.sql`
+
+### CLI Interface (backup_cli.php)
+```powershell
+# Create backup
+php backup_cli.php backup "Before major update"
+
+# List all backups
+php backup_cli.php list
+
+# Restore from backup (with confirmation)
+php backup_cli.php restore backup_bawsq3bp1lnrza6owc7h_2025-11-20_070000.sql
+
+# Show help
+php backup_cli.php help
+```
+
+### External Database Connection
+**Service:** Clever Cloud MySQL
+**Database:** bawsq3bp1lnrza6owc7h
+**Host:** bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com
+**Port:** 3306
+**User:** urksc91tu6d1ykrt
+
+### Manual Backup Commands
+```powershell
+# Full backup with all options
+mysqldump --host=bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com \
+  --port=3306 \
+  --user=urksc91tu6d1ykrt \
+  --password=KsC6GdxKNJQelbeXUlH4 \
+  --single-transaction \
+  --routines \
+  --triggers \
+  bawsq3bp1lnrza6owc7h > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Restore from backup
+mysql --host=bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com \
+  --port=3306 \
+  --user=urksc91tu6d1ykrt \
+  --password=KsC6GdxKNJQelbeXUlH4 \
+  bawsq3bp1lnrza6owc7h < backup_file.sql
+
+# Windows PowerShell backup
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+mysqldump --host=bawsq3bp1lnrza6owc7h-mysql.services.clever-cloud.com --port=3306 --user=urksc91tu6d1ykrt --password=KsC6GdxKNJQelbeXUlH4 bawsq3bp1lnrza6owc7h > "backup_$timestamp.sql"
+```
+
+### Best Practices
+- **Before migrations**: Always create backup before running database migrations
+- **Before major updates**: Backup before deploying significant code changes
+- **Regular schedule**: Consider weekly automated backups
+- **Download important backups**: Store critical backups off-server
+- **Test restores**: Periodically test restore process on development environment
+- **Keep multiple versions**: Don't delete old backups immediately
+
+### Security Notes
+- Backup files contain sensitive data - protect them carefully
+- `.htaccess` prevents direct web access to backups directory
+- Admin privileges required for web interface access
+- Never commit backup files to git repository (add `backups/` to .gitignore)
+
 ## Additional Notes
 
-- Application supports both MySQL and PostgreSQL databases
-- Uses AdminLTE theme for consistent UI/UX
-- Implements PHPWord for document generation
-- Session management handles multi-role authentication
-- Notification system for user interactions
-- Bulk operations support for inventory management
+- Application primarily uses MySQL (MySqli extension), with PostgreSQL support in migrations
+- Uses AdminLTE 3.2.0 theme with Bootstrap 5
+- Implements PHPWord and PHPSpreadsheet for document/Excel generation
+- Session-based authentication with role verification
+- Notification system via notifications table
+- Bulk operations for inventory management (bulk_edit_items.php, process_bulk_issue.php)
 - Custom migration system for schema changes without shell access
+- Comprehensive backup/restore system for external MySQL database (Clever Cloud)
+- No formal testing framework in place (no PHPUnit or similar)

@@ -1,0 +1,37 @@
+# Backup files (contain sensitive data)
+backups/
+*.sql
+*.sql.meta
+
+# Environment files
+.env
+.env.local
+
+# Uploads directory
+uploads/*
+!uploads/.gitkeep
+
+# Vendor directories
+vendor/
+node_modules/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
