@@ -321,7 +321,11 @@
     <form method="post" action="auth_v2.php" class="clearfix">
       <div class="form-group">
         <div class="input-group">
-          <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+          <?php 
+          // Pre-fill username if remember_username cookie exists
+          $remembered_username = isset($_COOKIE['remember_username']) ? htmlspecialchars($_COOKIE['remember_username']) : '';
+          ?>
+          <input type="text" class="form-control" id="username" name="username" placeholder="Username" value="<?php echo $remembered_username; ?>" required>
           <div class="input-group-text">
             <span class="fa-solid fa-user"></span>
           </div>

@@ -69,6 +69,8 @@ class Session {
   {
     setcookie('remember_token', '', time() - 3600, '/', '', false, true);
     setcookie('remember_user', '', time() - 3600, '/', '', false, true);
+    // Note: We don't clear remember_username here - it persists even after logout
+    // This allows username to be pre-filled without auto-login
   }
 public function logout(){
     // Clear remember me token from database

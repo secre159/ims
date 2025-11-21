@@ -35,6 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           // Set cookie for 30 days
           setcookie('remember_token', $token, time() + (30 * 24 * 60 * 60), '/', '', false, true);
           setcookie('remember_user', $user_id, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+          setcookie('remember_username', $username, time() + (30 * 24 * 60 * 60), '/', '', false, false);
+        }
+      } else {
+        // If not checked, clear username cookie
+        if (isset($_COOKIE['remember_username'])) {
+          setcookie('remember_username', '', time() - 3600, '/', '', false, false);
         }
       }
 
