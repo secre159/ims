@@ -11,13 +11,23 @@ class AutoMigrationGenerator {
     private $db;
     private $pdo;
     private $migrationsPath;
-    private $sqlFile;
+    public $sqlFile;
     
-    public function __construct() {
+    public function __construct($sqlFile = null) {
         global $db;
         $this->db = $db;
         $this->migrationsPath = __DIR__ . '/migrations/';
-        $this->sqlFile = __DIR__ . '/inv_system (4).sql';
+        
+        // Allow custom SQL file or use default
+        if ($sqlFile && file_exists($sqlFile)) {
+            $this->sqlFile = $sqlFile;
+        } elseif (file_exists(__DIR__ . '/inv_system (4).sql')) {
+            $this->sqlFile = __DIR__ . '/inv_system (4).sql';
+        } elseif (file_exists(__DIR__ . '/inv_system.sql')) {
+            $this->sqlFile = __DIR__ . '/inv_system.sql';
+        } else {
+            $this->sqlFile = null;
+        }
         
         // Create PDO connection
         try {
@@ -517,8 +527,11 @@ try {
                         <div class="mt-3">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle"></i> 
-                                This will analyze your <code>inv_system (4).sql</code> file and automatically create migrations for all tables, 
-                                including their structure, indexes, and sample data.
+                                <?php if ($generator->sqlFile): ?>
+                                    Using SQL file: <code><?php echo basename($generator->sqlFile); ?></code>
+                                <?php else: ?>
+                                    <span class="text-warning">No SQL file found. Please place inv_system.sql or inv_system (4).sql in the root directory.</span>
+                                <?php endif; ?>
                             </small>
                         </div>
                     </div>
