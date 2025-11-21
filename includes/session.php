@@ -21,11 +21,56 @@ class Session {
     {
       $this->user_is_logged_in = true;
     } else {
-      $this->user_is_logged_in = false;
+      // Check for remember me cookie
+      if(isset($_COOKIE['remember_token']) && isset($_COOKIE['remember_user'])) {
+        $this->attemptCookieLogin();
+      } else {
+        $this->user_is_logged_in = false;
+      }
     }
 
   }
+  
+  private function attemptCookieLogin()
+  {
+    global $db;
+    $token = $db->escape($_COOKIE['remember_token']);
+    $user_id = (int)$_COOKIE['remember_user'];
+    
+    // Verify token matches database
+    $sql = "SELECT id FROM users WHERE id = '{$user_id}' AND remember_token = '{$token}' LIMIT 1";
+    $result = $db->query($sql);
+    
+    if($result && $db->num_rows($result) === 1) {
+      // Valid token - log user in
+      $_SESSION['id'] = $user_id;
+      $this->user_is_logged_in = true;
+      
+      // Update last login time
+      updateLastLogIn($user_id);
+    } else {
+      // Invalid token - clear cookies
+      $this->clearRememberMeCookies();
+      $this->user_is_logged_in = false;
+    }
+  }
+  
+  private function clearRememberMeCookies()
+  {
+    setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+    setcookie('remember_user', '', time() - 3600, '/', '', false, true);
+  }
 public function logout(){
+    // Clear remember me token from database
+    if(isset($_SESSION['id'])) {
+        global $db;
+        $user_id = (int)$_SESSION['id'];
+        $db->query("UPDATE users SET remember_token = NULL WHERE id = '{$user_id}'");
+    }
+    
+    // Clear remember me cookies
+    $this->clearRememberMeCookies();
+    
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();

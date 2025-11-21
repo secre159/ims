@@ -337,6 +337,13 @@
         </div>
       </div>
       
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="remember_me" name="remember_me" value="1">
+        <label class="form-check-label" for="remember_me" style="color: #6c757d; font-size: 0.95rem;">
+          Remember Me
+        </label>
+      </div>
+      
       <div class="d-grid">
         <button type="submit" class="btn btn-login">Login</button>
       </div>
