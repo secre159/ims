@@ -501,31 +501,32 @@ if (isset($_GET['download'])) {
 
 $backup = new DatabaseBackupRestore();
 $backups = $backup->listBackups();
+$page_title = 'Database Backup & Restore';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Backup & Restore</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .backup-item { transition: all 0.2s; }
-        .backup-item:hover { background-color: #f8f9fa; }
-        .log-container { height: 300px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; }
-        .status-badge { font-size: 0.875rem; }
-    </style>
-</head>
-<body class="bg-light">
-    <div class="container py-5">
-        <div class="row">
-            <div class="col-lg-10 mx-auto">
-                <!-- Header -->
-                <div class="text-center mb-4">
-                    <h1><i class="fas fa-database"></i> Database Backup & Restore</h1>
-                    <p class="lead">Manage your database backups for <?php echo htmlspecialchars($backup->dbname ?? 'Unknown'); ?></p>
+<?php include_once('layouts/header.php'); ?>
+
+<style>
+    .backup-item { transition: all 0.2s; }
+    .backup-item:hover { background-color: #f8f9fa; }
+    .log-container { height: 300px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; }
+    .status-badge { font-size: 0.875rem; }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+            <div class="col-lg-12">
+                <!-- Page Header -->
+                <div class="row mb-3">
+                    <div class="col-sm-6">
+                        <h5 class="mb-0"><i class="fas fa-database"></i> Database Backup & Restore</h5>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="admin.php">Home</a></li>
+                            <li class="breadcrumb-item active">Backup & Restore</li>
+                        </ol>
+                    </div>
                 </div>
 
                 <!-- Quick Actions -->
@@ -892,5 +893,8 @@ $backups = $backup->listBackups();
             }
         });
     </script>
-</body>
-</html>
+</div>
+</div>
+</div>
+
+<?php include_once('layouts/footer.php'); ?>
