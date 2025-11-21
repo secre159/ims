@@ -20,17 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       
       // Handle Remember Me
       if ($remember_me) {
-        // Generate a secure random token
-        $token = bin2hex(random_bytes(32));
-        $user_id = $user['id'];
-        
-        // Store token in database
+        // Check if remember_token column exists
         global $db;
-        $db->query("UPDATE users SET remember_token = '{$token}' WHERE id = '{$user_id}'");
+        $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
         
-        // Set cookie for 30 days
-        setcookie('remember_token', $token, time() + (30 * 24 * 60 * 60), '/', '', false, true);
-        setcookie('remember_user', $user_id, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+        if ($db->num_rows($check_column) > 0) {
+          // Generate a secure random token
+          $token = bin2hex(random_bytes(32));
+          $user_id = $user['id'];
+          
+          // Store token in database
+          $db->query("UPDATE users SET remember_token = '{$token}' WHERE id = '{$user_id}'");
+          
+          // Set cookie for 30 days
+          setcookie('remember_token', $token, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+          setcookie('remember_user', $user_id, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+        }
       }
 
       $session->msg("s", "Hello ".$user['username'].", Welcome to BSU-INV.");

@@ -34,6 +34,16 @@ class Session {
   private function attemptCookieLogin()
   {
     global $db;
+    
+    // Check if remember_token column exists
+    $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
+    if ($db->num_rows($check_column) === 0) {
+      // Column doesn't exist yet, clear cookies and return
+      $this->clearRememberMeCookies();
+      $this->user_is_logged_in = false;
+      return;
+    }
+    
     $token = $db->escape($_COOKIE['remember_token']);
     $user_id = (int)$_COOKIE['remember_user'];
     
@@ -65,7 +75,12 @@ public function logout(){
     if(isset($_SESSION['id'])) {
         global $db;
         $user_id = (int)$_SESSION['id'];
-        $db->query("UPDATE users SET remember_token = NULL WHERE id = '{$user_id}'");
+        
+        // Check if remember_token column exists before updating
+        $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
+        if ($db->num_rows($check_column) > 0) {
+            $db->query("UPDATE users SET remember_token = NULL WHERE id = '{$user_id}'");
+        }
     }
     
     // Clear remember me cookies
