@@ -35,6 +35,12 @@ class Session {
   {
     global $db;
     
+    // Check if database is loaded yet
+    if (!isset($db) || $db === null) {
+      $this->user_is_logged_in = false;
+      return;
+    }
+    
     // Check if remember_token column exists
     $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
     if ($db->num_rows($check_column) === 0) {

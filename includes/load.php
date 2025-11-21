@@ -23,13 +23,15 @@ require_once(LIB_PATH_INC . 'config.php');
 // Load functions next (includes make_date function)
 require_once(LIB_PATH_INC . 'functions.php');
 
-// Session should load after functions to avoid undefined calls
+// Load database before session (session needs DB for remember me)
+require_once(LIB_PATH_INC . 'database.php');
+require_once(LIB_PATH_INC . 'sql.php');
+
+// Session should load after database to support remember me feature
 require_once(LIB_PATH_INC . 'session.php');
 
 // Other required system files
 require_once(LIB_PATH_INC . 'upload.php');
-require_once(LIB_PATH_INC . 'database.php');
-require_once(LIB_PATH_INC . 'sql.php');
 require_once(LIB_PATH_INC . 'cache.php');
 
 // Clean accidental output to prevent header issues
