@@ -1,135 +1,153 @@
 <?php
 class Session {
 
- public $msg;
- private $user_is_logged_in = false;
+    public $msg = [];
+    private $user_is_logged_in = false;
 
- function __construct(){
-   $this->flash_msg();
-   $this->userLoginSetup();
- }
-
-  public function isUserLoggedIn(){
-    return $this->user_is_logged_in;
-  }
-  public function login($user_id){
-    $_SESSION['id'] = $user_id;
-  }
-  private function userLoginSetup()
-  {
-    if(isset($_SESSION['id']))
-    {
-      $this->user_is_logged_in = true;
-    } else {
-      // Check for remember me cookie
-      if(isset($_COOKIE['remember_token']) && isset($_COOKIE['remember_user'])) {
-        $this->attemptCookieLogin();
-      } else {
-        $this->user_is_logged_in = false;
-      }
+    function __construct(){
+        $this->flash_msg();
+        $this->userLoginSetup();
     }
 
-  }
-  
-  private function attemptCookieLogin()
-  {
-    global $db;
-    
-    // Check if database is loaded yet
-    if (!isset($db) || $db === null) {
-      $this->user_is_logged_in = false;
-      return;
+    public function isUserLoggedIn(){
+        return $this->user_is_logged_in;
     }
     
-    // Check if remember_token column exists
-    $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
-    if ($db->num_rows($check_column) === 0) {
-      // Column doesn't exist yet, clear cookies and return
-      $this->clearRememberMeCookies();
-      $this->user_is_logged_in = false;
-      return;
-    }
-    
-    $token = $db->escape($_COOKIE['remember_token']);
-    $user_id = (int)$_COOKIE['remember_user'];
-    
-    // Verify token matches database
-    $sql = "SELECT id FROM users WHERE id = '{$user_id}' AND remember_token = '{$token}' LIMIT 1";
-    $result = $db->query($sql);
-    
-    if($result && $db->num_rows($result) === 1) {
-      // Valid token - log user in
-      $_SESSION['id'] = $user_id;
-      $this->user_is_logged_in = true;
-      
-      // Update last login time
-      updateLastLogIn($user_id);
-    } else {
-      // Invalid token - clear cookies
-      $this->clearRememberMeCookies();
-      $this->user_is_logged_in = false;
-    }
-  }
-  
-  private function clearRememberMeCookies()
-  {
-    setcookie('remember_token', '', time() - 3600, '/', '', false, true);
-    setcookie('remember_user', '', time() - 3600, '/', '', false, true);
-    // Note: We don't clear remember_username here - it persists even after logout
-    // This allows username to be pre-filled without auto-login
-  }
-public function logout(){
-    // Clear remember me token from database
-    if(isset($_SESSION['id'])) {
-        global $db;
-        $user_id = (int)$_SESSION['id'];
-        
-        // Check if remember_token column exists before updating
-        $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
-        if ($db->num_rows($check_column) > 0) {
-            $db->query("UPDATE users SET remember_token = NULL WHERE id = '{$user_id}'");
+    public function requireLogin() {
+        if (!$this->isUserLoggedIn()) {
+            header("Location: index.php");
+            exit();
         }
     }
     
-    // Clear remember me cookies
-    $this->clearRememberMeCookies();
+    public function login($user_id){
+        $_SESSION['id'] = $user_id;
+    }
     
-    $_SESSION = [];
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
+    private function userLoginSetup()
+    {
+        if(isset($_SESSION['id']))
+        {
+            $this->user_is_logged_in = true;
+        } else {
+            // Check for remember me cookie
+            if(isset($_COOKIE['remember_token']) && isset($_COOKIE['remember_user'])) {
+                $this->attemptCookieLogin();
+            } else {
+                $this->user_is_logged_in = false;
+            }
+        }
     }
-    session_destroy();
-}
-
-
-public function msg($type ='', $msg =''){
-    if(!empty($msg)){
-       if(strlen(trim($type)) == 1){
-         $type = str_replace( array('d', 'i', 'w','s'), array('danger', 'info', 'warning','success'), $type );
-       }
-       $_SESSION['msg'][$type] = $msg;
-    } else {
-      // Always return the latest message array
-      return $this->msg ?? null;
+  
+    private function attemptCookieLogin()
+    {
+        global $db;
+    
+        // Check if database is loaded yet
+        if (!isset($db) || $db === null) {
+            $this->user_is_logged_in = false;
+            return;
+        }
+    
+        // Check if remember_token column exists
+        $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
+        if ($db->num_rows($check_column) === 0) {
+            // Column doesn't exist yet, clear cookies and return
+            $this->clearRememberMeCookies();
+            $this->user_is_logged_in = false;
+            return;
+        }
+    
+        $token = $db->escape($_COOKIE['remember_token']);
+        $user_id = (int)$_COOKIE['remember_user'];
+    
+        // Verify token matches database
+        $sql = "SELECT id FROM users WHERE id = '{$user_id}' AND remember_token = '{$token}' LIMIT 1";
+        $result = $db->query($sql);
+    
+        if($result && $db->num_rows($result) === 1) {
+            // Valid token - log user in
+            $_SESSION['id'] = $user_id;
+            $this->user_is_logged_in = true;
+      
+            // Update last login time
+            updateLastLogIn($user_id);
+        } else {
+            // Invalid token - clear cookies
+            $this->clearRememberMeCookies();
+            $this->user_is_logged_in = false;
+        }
     }
-}
-
-
-  private function flash_msg(){
-    if(isset($_SESSION['msg'])) {
-      $this->msg = $_SESSION['msg'];
-      unset($_SESSION['msg']);
-    } else {
-      $this->msg;
+  
+    private function clearRememberMeCookies()
+    {
+        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+        setcookie('remember_user', '', time() - 3600, '/', '', false, true);
+        // Note: We don't clear remember_username here - it persists even after logout
+        // This allows username to be pre-filled without auto-login
     }
-  }
+    
+    public function logout(){
+        // Clear remember me token from database
+        if(isset($_SESSION['id'])) {
+            global $db;
+            $user_id = (int)$_SESSION['id'];
+        
+            // Check if remember_token column exists before updating
+            $check_column = $db->query("SHOW COLUMNS FROM users LIKE 'remember_token'");
+            if ($db->num_rows($check_column) > 0) {
+                $db->query("UPDATE users SET remember_token = NULL WHERE id = '{$user_id}'");
+            }
+        }
+    
+        // Clear remember me cookies
+        $this->clearRememberMeCookies();
+    
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+
+        session_destroy();
+        session_write_close();
+
+        $this->user_is_logged_in = false;
+    }
+
+    /** ---------------------------
+     *   FLASH MESSAGE HANDLER
+     *  --------------------------- */
+    public function msg($type = '', $msg = '') {
+        if (!empty($msg)) {
+            // Convert short type (d,w,i,s) → Bootstrap types
+            if (strlen(trim($type)) == 1) {
+                $type = str_replace(
+                    ['d', 'i', 'w', 's'],
+                    ['danger', 'info', 'warning', 'success'],
+                    $type
+                );
+            }
+            $_SESSION['msg'][$type] = $msg;
+        } else {
+            // Return flash messages stored earlier
+            return $this->msg;
+        }
+    }
+
+    private function flash_msg() {
+        if (!empty($_SESSION['msg'])) {
+            $this->msg = $_SESSION['msg'];
+            unset($_SESSION['msg']);
+        } else {
+            $this->msg = [];
+        }
+    }
 }
 
 $session = new Session();
 $msg = $session->msg();
-
 ?>
